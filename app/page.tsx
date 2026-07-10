@@ -12,6 +12,9 @@ export default function Home() {
 
   const recognitionRef = useRef<any>(null);
 
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null); 
+
   const startListening = () => {
     setError(null);
     const SpeechRecognition =
@@ -91,6 +94,33 @@ export default function Home() {
     }
   };
 
+  // 1. REPRODUCIR: Guarda la referencia y maneja los estados
+const playAudio = (url: string) => {
+  stopAudio(); // Frena cualquier audio previo que haya quedado colgado
+
+  const audio = new Audio(url);
+  audioRef.current = audio;
+  setIsPlayingAudio(true);
+
+  audio.play().catch(e => {
+    console.error("Autoplay bloqueado por el navegador:", e);
+    setIsPlayingAudio(false);
+  });
+
+  audio.onended = () => {
+    setIsPlayingAudio(false);
+  };
+};
+
+// 2. FRENAR: Pausa el audio de raíz y lo vuelve a cero
+const stopAudio = () => {
+  if (audioRef.current) {
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0; // Lo manda al inicio
+    setIsPlayingAudio(false);
+  }
+};
+
   const playAudioManual = () => {
     if (response?.audio_url) {
       const audio = new Audio(response.audio_url);
@@ -101,82 +131,98 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-6 text-slate-100">
       <div className="w-full max-w-md text-center space-y-8">
-        {/* Encabezado */}
-        <div className="space-y-2">
-          <h1 className="text-4xl font-extrabold tracking-tight text-red-500">
-            BadDay AI
-          </h1>
-          <p className="text-sm text-slate-400">
-            Aprende Ingles con tu telefono, en cualquier momento.
-          </p>
-        </div>
+  {/* Encabezado */}
+  <div className="space-y-2">
+    <h1 className="text-4xl font-extrabold tracking-tight text-blue-500">
+      English AI Trainer
+    </h1>
+    <p className="text-sm text-slate-400">
+      Aprende Inglés con tu teléfono, en cualquier momento.
+    </p>
+  </div>
 
-        {/* Botón Central de Control */}
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <button
-            onClick={isRecording ? stopListening : startListening}
-            disabled={loading}
-            className={`relative flex h-32 w-32 items-center justify-center rounded-full text-white shadow-2xl transition-all duration-300 disabled:opacity-50 ${
-              isRecording
-                ? "bg-red-600 animate-pulse hover:bg-red-700"
-                : "bg-gradient-to-tr from-red-600 to-orange-500 hover:scale-105"
-            }`}
-          >
-            {loading ? (
-              <Loader2 className="h-14 w-14 animate-spin" />
-            ) : isRecording ? (
-              <Square className="h-14 w-14 fill-current" />
-            ) : (
-              <Mic className="h-14 w-14" />
-            )}
-          </button>
-
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            {loading
-              ? "Procesando con Gemini..."
-              : isRecording
-                ? "Grabando... Tocá para frenar"
-                : "Tocá para hablar"}
-          </p>
-        </div>
-
-        {/* Alertas de Error */}
-        {error && (
-          <div className="flex items-center space-x-2 rounded-lg bg-red-950/50 border border-red-800 p-4 text-sm text-red-400 text-left">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <span>{error}</span>
-          </div>
+  {/* Botón Central de Control e Interrupción de Audio */}
+  <div className="flex flex-col items-center justify-center space-y-4">
+    <div className="flex items-center space-x-6">
+      
+      {/* Botón Principal (Grabar / Frenar Escucha) */}
+      <button
+        onClick={isRecording ? stopListening : startListening}
+        disabled={loading}
+        className={`relative flex h-32 w-32 items-center justify-center rounded-full text-white shadow-2xl transition-all duration-300 disabled:opacity-50 ${
+          isRecording
+            ? "bg-red-600 animate-pulse hover:bg-red-700"
+            : "bg-gradient-to-tr from-blue-600 to-indigo-500 hover:scale-105"
+        }`}
+      >
+        {loading ? (
+          <Loader2 className="h-14 w-14 animate-spin" />
+        ) : isRecording ? (
+          <Square className="h-14 w-14 fill-current" />
+        ) : (
+          <Mic className="h-14 w-14" />
         )}
+      </button>
 
-        {/* Tarjeta de Respuesta de la IA */}
-        {response && (
-          <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 text-left space-y-4">
-            <div>
-              <span className="text-xs font-bold uppercase text-slate-500">
-                Dijiste:
-              </span>
-              <p className="text-slate-300 font-medium">{response.user_said}</p>
-            </div>
+      {/* BOTÓN DE PARADA DE AUDIO: Aparece al lado solo si la IA está reproduciendo voz */}
+      {isPlayingAudio && (
+        <button
+          onClick={stopAudio}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg transition hover:scale-110"
+          title="Stop Audio"
+        >
+          <Square className="h-6 w-6 fill-current" />
+        </button>
+      )}
 
-            <div className="border-t border-slate-800 pt-3">
-              <span className="text-xs font-bold uppercase text-red-400">
-                Respuesta (AI):
-              </span>
-              <p className="text-slate-200 mt-1">{response.reply}</p>
-            </div>
+    </div>
 
-            {response.audio_url && (
-              <button
-                onClick={playAudioManual}
-                className="flex w-full items-center justify-center space-x-2 rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 px-4 text-sm font-medium transition"
-              >
-                <Volume2 className="h-4 w-4" />
-                <span>Escuchar de nuevo</span>
-              </button>
-            )}
-          </div>
-        )}
+    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+      {loading
+        ? "Procesando con Gemini..."
+        : isRecording
+          ? "Grabando... Tocá para frenar"
+          : "Tocá para hablar"}
+    </p>
+  </div>
+
+  {/* Alertas de Error */}
+  {error && (
+    <div className="flex items-center space-x-2 rounded-lg bg-red-950/50 border border-red-800 p-4 text-sm text-red-400 text-left">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <span>{error}</span>
+    </div>
+  )}
+
+  {/* Tarjeta de Respuesta de la IA */}
+  {response && (
+    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 text-left space-y-4">
+      <div>
+        <span className="text-xs font-bold uppercase text-slate-500">
+          Dijiste:
+        </span>
+        <p className="text-slate-300 font-medium mt-1">{response.user_said}</p>
       </div>
+
+      <div className="border-t border-slate-800 pt-3">
+        <span className="text-xs font-bold uppercase text-blue-400">
+          Respuesta (AI):
+        </span>
+        <p className="text-slate-200 mt-1 whitespace-pre-line">{response.reply}</p>
+      </div>
+
+      {response.audio_url && !isPlayingAudio && (
+        <button
+          onClick={() => playAudio(response.audio_url)}
+          className="flex w-full items-center justify-center space-x-2 rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 px-4 text-sm font-medium transition"
+        >
+          <Volume2 className="h-4 w-4" />
+          <span>Escuchar de nuevo</span>
+        </button>
+      )}
+    </div>
+  )}
+</div>
     </main>
   );
 }
