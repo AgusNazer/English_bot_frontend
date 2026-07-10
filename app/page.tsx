@@ -68,21 +68,34 @@ export default function Home() {
 
         // Reproducción automática del archivo MP3 devuelto
         if (res.data.audio_url) {
-          const audio = new Audio(res.data.audio_url);
-          audio.play().catch((e) => {
-            console.error("El navegador bloqueó el autoplay del audio:", e);
-            setError(
-              "Hacé clic en el botón de escuchar, el navegador bloqueó el inicio automático.",
-            );
-          });
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Se pudrió todo al conectar con el backend de Render.");
-      } finally {
-        setLoading(false);
-      }
-    };
+      // 1. Frenamos cualquier audio que haya quedado colgado antes
+      stopAudio(); 
+
+      // 2. Creamos la nueva instancia de audio y la guardamos en la referencia
+      const audio = new Audio(res.data.audio_url);
+      audioRef.current = audio;
+      
+      // 3. PASAMOS EL ESTADO A TRUE INMEDIATAMENTE PARA QUE APAREZCA EL BOTÓN DE PAUSA
+      setIsPlayingAudio(true);
+
+      // 4. Le damos Play
+      audio.play().catch(e => {
+        console.error("Autoplay bloqueado por el navegador:", e);
+        setIsPlayingAudio(false);
+      });
+
+      // 5. Cuando el audio termine solito, volvemos el estado a false para ocultar el botón
+      audio.onended = () => {
+        setIsPlayingAudio(false);
+      };
+    }
+  } catch (err) {
+    console.error(err);
+    setError("Se pudrió todo al conectar con el backend.");
+  } finally {
+    setLoading(false);
+  }
+};
 
     recognitionRef.current = recognition;
     recognition.start();
